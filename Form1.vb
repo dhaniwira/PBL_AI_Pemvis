@@ -1,4 +1,7 @@
-﻿''' <summary>
+﻿Imports System.Diagnostics
+Imports System.IO
+
+''' <summary>
 ''' Shell aplikasi: sidebar navigasi, area konten, dan riwayat navigasi bertingkat.
 ''' </summary>
 Public Class Form1
@@ -89,6 +92,7 @@ Public Class Form1
         nav.Controls.Add(CreateNavButton("Jurusan", "jurusan"))
         nav.Controls.Add(CreateNavButton("Program Studi", "prodi"))
         nav.Controls.Add(CreateNavButton("Mahasiswa", "mahasiswa"))
+        nav.Controls.Add(CreateActionButton("Ekspor Laporan", AddressOf HandleExportReport))
 
         layout.Controls.Add(nav, 0, 1)
 
@@ -134,6 +138,135 @@ Public Class Form1
 
         _navButtons(key) = btn
         Return btn
+    End Function
+
+    Private Function CreateActionButton(text As String, handler As EventHandler) As RoundedButton
+        Dim btn As New RoundedButton With {
+            .Text = "    " & text,
+            .TextAlign = ContentAlignment.MiddleLeft,
+            .Size = New Size(220, 42),
+            .Margin = New Padding(0, 12, 0, 4),
+            .Font = Theme.MakeFont(10, FontStyle.Bold),
+            .BackColor = Color.FromArgb(22, 163, 74),
+            .ForeColor = Color.White,
+            .Cursor = Cursors.Hand,
+            .CornerRadius = 8
+        }
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(21, 128, 61)
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(21, 128, 61)
+        AddHandler btn.Click, handler
+        Return btn
+    End Function
+
+    Private Sub HandleExportReport(sender As Object, e As EventArgs)
+        Using dialog As New SaveFileDialog()
+            dialog.Title = "Ekspor Laporan Risiko Akademik"
+            dialog.Filter = "Laporan CSV (*.csv)|*.csv|Laporan JSON (*.json)|*.json"
+            dialog.FilterIndex = 1
+            dialog.AddExtension = True
+            dialog.RestoreDirectory = True
+            dialog.OverwritePrompt = True
+            dialog.FileName = "laporan-risiko-akademik-" &
+                                DateTime.Now.ToString("yyyyMMdd-HHmm") & ".csv"
+
+            If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
+
+            Dim outputPath = dialog.FileName
+            Dim ext = Path.GetExtension(outputPath).ToLowerInvariant()
+            If ext <> ".csv" AndAlso ext <> ".json" Then
+                outputPath &= If(dialog.FilterIndex = 2, ".json", ".csv")
+            End If
+
+            Try
+                ExportReport(outputPath)
+                MessageBox.Show(
+                    Me,
+                    "Laporan berhasil diekspor:" & Environment.NewLine & outputPath,
+                    "Ekspor Laporan",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information)
+            Catch ex As Exception
+                MessageBox.Show(
+                    Me,
+                    "Gagal mengekspor laporan:" & Environment.NewLine & ex.Message,
+                    "Ekspor Laporan",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error)
+            End Try
+        End Using
+    End Sub
+
+    Private Sub ExportReport(outputPath As String)
+        Dim root = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\.."))
+        Dim script = Path.Combine(root, "inference", "export_report.py")
+        If Not File.Exists(script) Then
+            Throw New FileNotFoundException("Script ekspor laporan tidak ditemukan.", script)
+        End If
+
+        Dim python = FindPython()
+        If String.IsNullOrEmpty(python) Then
+            Throw New InvalidOperationException(
+                "Python tidak ditemukan di PATH. Pasang Python 3 lalu jalankan ulang aplikasi.")
+        End If
+
+        Dim info As New ProcessStartInfo With {
+            .FileName = python,
+            .Arguments = Quote(script) & " " & Quote(outputPath),
+            .WorkingDirectory = root,
+            .UseShellExecute = False,
+            .CreateNoWindow = True,
+            .RedirectStandardOutput = True,
+            .RedirectStandardError = True
+        }
+
+        Using proc = Process.Start(info)
+            If proc Is Nothing Then
+                Throw New InvalidOperationException("Python tidak dapat dijalankan.")
+            End If
+
+            Dim stdout = proc.StandardOutput.ReadToEndAsync()
+            Dim stderr = proc.StandardError.ReadToEndAsync()
+            proc.WaitForExit()
+
+            Dim output = stdout.Result
+            Dim errorText = stderr.Result
+            If proc.ExitCode <> 0 Then
+                Dim pesan = If(String.IsNullOrWhiteSpace(errorText), output, errorText)
+                Throw New InvalidOperationException(pesan.Trim())
+            End If
+            If Not File.Exists(outputPath) Then
+                Throw New InvalidOperationException("Script selesai, tetapi file laporan tidak terbentuk.")
+            End If
+        End Using
+    End Sub
+
+    Private Function FindPython() As String
+        For Each candidate In {"python", "python3", "py"}
+            Try
+                Dim info As New ProcessStartInfo With {
+                    .FileName = candidate,
+                    .Arguments = "--version",
+                    .UseShellExecute = False,
+                    .CreateNoWindow = True,
+                    .RedirectStandardOutput = True,
+                    .RedirectStandardError = True
+                }
+                Using proc = Process.Start(info)
+                    If proc IsNot Nothing AndAlso
+                       proc.WaitForExit(5000) AndAlso
+                       proc.ExitCode = 0 Then
+                        Return candidate
+                    End If
+                End Using
+            Catch
+            End Try
+        Next
+        Return Nothing
+    End Function
+
+    Private Function Quote(value As String) As String
+        Dim q = ChrW(34).ToString()
+        Return q & value.Replace(q, q & q) & q
     End Function
 
     Private Function CreatePage(key As String) As PageBase
