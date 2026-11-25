@@ -291,10 +291,10 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Database.mdf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
     <Content Include="Database_log.ldf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <DependentUpon>Database.mdf</DependentUpon>
     </Content>
   </ItemGroup>

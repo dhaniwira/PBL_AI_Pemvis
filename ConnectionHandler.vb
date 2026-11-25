@@ -8,12 +8,14 @@ Imports Microsoft.Data.SqlClient
 ''' </summary>
 Public Class ConnectionHandler
 
-    ' Sesuaikan bagian ini bila instance SQL Server atau lokasi Database.mdf berbeda.
-    ' Database.mdf disalin otomatis ke folder aplikasi (bin\Debug / bin\Release)
-    ' karena properti CopyToOutputDirectory pada project bernilai Always.
+    ' Aplikasi VB dan inferensi Python memakai Database.mdf yang sama di root proyek.
+    ' Path ..\.. mengarah dari bin\Debug (atau bin\Release) ke root proyek.
+    ' Jangan menyalin Database.mdf ke folder output agar tidak ada dua database
+    ' dengan nama logis yang sama.
     Public Shared ReadOnly ConnectionString As String =
         "Data Source=(LocalDB)\MSSQLLocalDB;" &
-        "AttachDbFilename=" & IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Database.mdf") & ";" &
+        "AttachDbFilename=" & IO.Path.GetFullPath(IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\..\Database.mdf")) & ";" &
+        "Database=Database;" &
         "Integrated Security=True;TrustServerCertificate=True"
 
     ''' <summary>Membuka koneksi baru ke database dan mengembalikannya dalam keadaan terbuka.</summary>
