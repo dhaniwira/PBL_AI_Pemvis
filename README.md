@@ -269,7 +269,7 @@ TINGGI > SEDANG > RENDAH > AMAN.
 
 - Kolom `alfa`, `izin`, `sakit`, `telat` dianggap jumlah pertemuan.
 - 1 pertemuan = `sks x 50` menit; 1 semester efektif = 16 pertemuan.
-- Penalti nilai: D `UMUM` +1, D `MPK/MKKU` +3, E +3, maksimal 10.
+- Penalti nilai: `(1 x D_UMUM) + (3 x D_MPK) + (3 x D_MKKU) + (3 x E)`, maksimal 10.
 - Status `mangkir` 1 semester -> kode 3; >= 2 berturut -> kode 4.
 
 ---

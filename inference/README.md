@@ -138,13 +138,19 @@ Singleton dipakai khusus untuk variabel status dan pengulangan di
 
 ### Penalti nilai
 
-| Kondisi | Tambahan |
-| :--- | :---: |
-| D pada `UMUM` | +1 |
-| D pada `MPK` / `MKKU` | +3 |
-| E semua kategori | +3 |
+```text
+Penalti = (1 x D_UMUM) + (3 x D_MPK) + (3 x D_MKKU) + (3 x E)
+```
 
-Maksimum 10. Aturan khusus penalti (`R-AKD-5`) aktif jika penalti `>= 2`.
+| Komponen | Arti |
+| :--- | :--- |
+| `D_UMUM` | Jumlah nilai D pada mata kuliah `UMUM` |
+| `D_MPK` | Jumlah nilai D pada mata kuliah `MPK` |
+| `D_MKKU` | Jumlah nilai D pada mata kuliah `MKKU` |
+| `E` | Jumlah nilai E dari semua kategori |
+
+Total penalti dibatasi maksimum 10. Aturan khusus penalti (`R-AKD-5`) aktif
+jika penalti `>= 2`.
 
 ### Status
 

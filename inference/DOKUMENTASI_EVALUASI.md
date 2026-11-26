@@ -118,13 +118,28 @@ Fitur dibentuk oleh `build_one()` di `process_evaluation.py`.
 
 ### 3.1 Penalti nilai
 
-| Kondisi | Tambahan |
-| :--- | :---: |
-| D pada mata kuliah `UMUM` | +1 |
-| D pada `MPK` / `MKKU` | +3 |
-| E pada semua kategori | +3 |
+Nilai D dan E dihitung dengan bobot berikut:
 
-Total dibatasi maksimum 10.
+```text
+Penalti = (1 x D_UMUM) + (3 x D_MPK) + (3 x D_MKKU) + (3 x E)
+```
+
+| Komponen | Arti | Bobot |
+| :--- | :--- | :---: |
+| `D_UMUM` | Jumlah nilai D pada mata kuliah `UMUM` | 1 |
+| `D_MPK` | Jumlah nilai D pada mata kuliah `MPK` | 3 |
+| `D_MKKU` | Jumlah nilai D pada mata kuliah `MKKU` | 3 |
+| `E` | Jumlah nilai E dari semua kategori | 3 |
+
+Contoh:
+
+```text
+D_UMUM = 1, D_MPK = 1, D_MKKU = 1, E = 1
+Penalti = (1 x 1) + (3 x 1) + (3 x 1) + (3 x 1) = 10
+```
+
+Total penalti dibatasi maksimum 10. Nilai ini menjadi input
+`kualitas_nilai` pada sub-sistem akademik.
 
 ### 3.2 Status registrasi
 
