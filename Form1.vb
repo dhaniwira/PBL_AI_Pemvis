@@ -160,21 +160,19 @@ Public Class Form1
 
     Private Sub HandleExportReport(sender As Object, e As EventArgs)
         Using dialog As New SaveFileDialog()
-            dialog.Title = "Ekspor Laporan Risiko Akademik"
-            dialog.Filter = "Laporan CSV (*.csv)|*.csv|Laporan JSON (*.json)|*.json"
+            dialog.Title = "Ekspor Laporan CSV"
+            dialog.Filter = "Laporan CSV (*.csv)|*.csv"
             dialog.FilterIndex = 1
             dialog.AddExtension = True
             dialog.RestoreDirectory = True
             dialog.OverwritePrompt = True
-            dialog.FileName = "laporan-risiko-akademik-" &
-                                DateTime.Now.ToString("yyyyMMdd-HHmm") & ".csv"
+            dialog.FileName = "report.csv"
 
             If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
 
             Dim outputPath = dialog.FileName
-            Dim ext = Path.GetExtension(outputPath).ToLowerInvariant()
-            If ext <> ".csv" AndAlso ext <> ".json" Then
-                outputPath &= If(dialog.FilterIndex = 2, ".json", ".csv")
+            If Path.GetExtension(outputPath).ToLowerInvariant() <> ".csv" Then
+                outputPath &= ".csv"
             End If
 
             Try
@@ -198,7 +196,7 @@ Public Class Form1
 
     Private Sub ExportReport(outputPath As String)
         Dim root = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\.."))
-        Dim script = Path.Combine(root, "inference", "export_report.py")
+        Dim script = Path.Combine(root, "inference", "main.py")
         If Not File.Exists(script) Then
             Throw New FileNotFoundException("Script ekspor laporan tidak ditemukan.", script)
         End If
@@ -211,7 +209,7 @@ Public Class Form1
 
         Dim info As New ProcessStartInfo With {
             .FileName = python,
-            .Arguments = Quote(script) & " " & Quote(outputPath),
+            .Arguments = Quote(script) & " --csv " & Quote(outputPath),
             .WorkingDirectory = root,
             .UseShellExecute = False,
             .CreateNoWindow = True,
