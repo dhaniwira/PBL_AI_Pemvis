@@ -2,8 +2,7 @@
 -- DATA DEMO UNTUK PENGUJIAN SISTEM FUZZY
 -- NIM demo memakai prefix 2507419xxx.
 -- Jalankan setelah db.sql:
---   sqlcmd -S "(localdb)\MSSQLLocalDB" -d PBL_AI_Pemvis -i seed_demo.sql
--- atau: python setup_database.py --with-demo
+--   sqlcmd -S "(localdb)\MSSQLLocalDB" -d Database -i seed_demo.sql
 -- =====================================================
 
 IF OBJECT_ID(N'mahasiswa', N'U') IS NULL
@@ -11,9 +10,6 @@ BEGIN
     RAISERROR('Tabel mahasiswa belum ada. Jalankan db.sql terlebih dahulu.', 16, 1);
     RETURN;
 END;
-
-IF OBJECT_ID(N'hasil_fuzzy', N'U') IS NOT NULL
-    DELETE FROM hasil_fuzzy WHERE nim LIKE '2507419%';
 
 DELETE FROM mahasiswa
 WHERE nim IN (

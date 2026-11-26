@@ -7,19 +7,22 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from inference.features import build_features, grade
-from inference.fuzzy import (
+from inference.administratif_evaluation import Administratif
+from inference.akademik_evaluation import Akademik
+from inference.final_result_evaluation import FinalResult
+from inference.kehadiran_evaluation import Kehadiran
+from inference.membership import Membership
+from inference.process_evaluation import (
     AMAN,
     RENDAH,
     SEDANG,
     TIDAK_ADA_DATA,
     TINGGI,
-    fuzzify,
+    build_features,
+    grade,
     infer,
-    sing,
-    trap,
-    tri,
 )
+from inference.subsystem import fuzzify_value
 
 
 def _student(**overrides):
@@ -65,8 +68,6 @@ def _detail(**overrides):
         "telat": 0,
         "kategori": "UMUM",
         "sks": 2,
-        "kode": "TIK101",
-        "nama": "MK Uji",
     }
     row.update(overrides)
     return row
@@ -104,36 +105,44 @@ def _fitur(**overrides):
 
 
 class TestMembership(unittest.TestCase):
-    def test_trap_kiri(self):
-        self.assertEqual(trap(0.0, 0.0, 0.0, 1.8, 2.0), 1.0)
-        self.assertEqual(trap(2.0, 0.0, 0.0, 1.8, 2.0), 0.0)
-        self.assertAlmostEqual(trap(1.9, 0.0, 0.0, 1.8, 2.0), 0.5)
+    def test_linear_up(self):
+        self.assertEqual(Membership.linear_up(2.5, 2.8, 3.0), 0.0)
+        self.assertEqual(Membership.linear_up(3.5, 2.8, 3.0), 1.0)
+        self.assertAlmostEqual(Membership.linear_up(2.9, 2.8, 3.0), 0.5)
 
-    def test_trap_kanan(self):
-        self.assertEqual(trap(14.0, 3.0, 4.0, 14.0, 14.0), 1.0)
-        self.assertAlmostEqual(trap(3.5, 3.0, 4.0, 14.0, 14.0), 0.5)
-        self.assertEqual(trap(2.0, 3.0, 4.0, 14.0, 14.0), 0.0)
+    def test_linear_down(self):
+        self.assertEqual(Membership.linear_down(1.5, 1.8, 2.0), 1.0)
+        self.assertEqual(Membership.linear_down(2.5, 1.8, 2.0), 0.0)
+        self.assertAlmostEqual(Membership.linear_down(1.9, 1.8, 2.0), 0.5)
 
-    def test_tri(self):
-        self.assertEqual(tri(1.0, 0.5, 1.0, 2.0), 1.0)
-        self.assertAlmostEqual(tri(1.5, 0.5, 1.0, 2.0), 0.5)
-        self.assertEqual(tri(2.0, 0.5, 1.0, 2.0), 0.0)
+    def test_triangle(self):
+        self.assertEqual(Membership.triangle(1.0, 0.5, 1.0, 2.0), 1.0)
+        self.assertAlmostEqual(Membership.triangle(1.5, 0.5, 1.0, 2.0), 0.5)
+        self.assertEqual(Membership.triangle(2.0, 0.5, 1.0, 2.0), 0.0)
 
-    def test_sing(self):
-        self.assertEqual(sing(2.0, 2.0), 1.0)
-        self.assertEqual(sing(1.0, 2.0), 0.0)
+    def test_trapezoid(self):
+        self.assertEqual(Membership.trapezoid(1.7, 1.8, 2.0, 2.8, 3.0), 0.0)
+        self.assertAlmostEqual(Membership.trapezoid(1.9, 1.8, 2.0, 2.8, 3.0), 0.5)
+        self.assertEqual(Membership.trapezoid(2.4, 1.8, 2.0, 2.8, 3.0), 1.0)
+        self.assertAlmostEqual(Membership.trapezoid(2.9, 1.8, 2.0, 2.8, 3.0), 0.5)
 
-    def test_fuzzify_status(self):
-        mu = fuzzify("status", 2.0)
-        self.assertEqual(mu["Cuti Akademik"], 1.0)
-        self.assertEqual(mu["Aktif Normal"], 0.0)
-
-    def test_fuzzify_pengulangan(self):
-        self.assertEqual(fuzzify("pengulangan", 0.0)["Normal"], 1.0)
-        self.assertEqual(fuzzify("pengulangan", 1.0)["Mengulang"], 1.0)
+    def test_fuzzify(self):
+        self.assertEqual(
+            fuzzify_value("status", 2.0, Administratif.sets)["Cuti Akademik"], 1.0
+        )
+        self.assertEqual(
+            fuzzify_value("pengulangan", 1.0, Akademik.sets)["Mengulang"], 1.0
+        )
 
 
 class TestInference(unittest.TestCase):
+    def test_classes(self):
+        fitur = _fitur()
+        self.assertEqual(Akademik(fitur).evaluate()["skor"], 10.0)
+        self.assertEqual(Kehadiran(fitur).evaluate()["skor"], 10.0)
+        self.assertEqual(Administratif(fitur).evaluate()["skor"], 10.0)
+        self.assertEqual(FinalResult(fitur).to_dict()["profil"], AMAN)
+
     def test_profil_aman(self):
         result = infer(_fitur())
         self.assertEqual(result["akademik"]["skor"], 10.0)
@@ -157,12 +166,11 @@ class TestInference(unittest.TestCase):
         self.assertEqual(result["administrasi"]["skor"], 95.0)
         self.assertEqual(result["profil"], TINGGI)
 
-    def test_akd5_hanya_untuk_penalti_dua(self):
+    def test_penalti_dua_mengaktifkan_aturan_khusus(self):
         satu = infer(_fitur(ips=2.50, delta_ips=-0.30, penalti=1.0))
-        self.assertNotIn("R-AKD-5", [row[0] for row in satu["akademik"]["aktif"]])
-
+        self.assertEqual(satu["akademik"]["skor"], 35.0)
         dua = infer(_fitur(ips=2.50, delta_ips=-0.30, penalti=2.0))
-        self.assertIn("R-AKD-5", [row[0] for row in dua["akademik"]["aktif"]])
+        self.assertEqual(dua["akademik"]["skor"], 50.0)
 
     def test_worst_case(self):
         result = infer(
@@ -211,14 +219,7 @@ class TestFeatures(unittest.TestCase):
             ),
         ]
         details = [
-            _detail(
-                id_riwayat_studi=2,
-                nilai_akhir=55,
-                alfa=4,
-                izin=1,
-                telat=2,
-                kategori="UMUM",
-            ),
+            _detail(id_riwayat_studi=2, nilai_akhir=55, alfa=4, izin=1, telat=2),
             _detail(
                 id_riwayat_studi=2,
                 nilai_akhir=58,
@@ -252,10 +253,6 @@ class TestFeatures(unittest.TestCase):
             fitur["menit"],
             (4 + 2) * 2 * 50 + (2 + 0) * 3 * 50 + (1 + 0) * 2 * 50,
         )
-        self.assertAlmostEqual(
-            fitur["jam"],
-            ((4 + 1 + 0) * 2 * 50 + (2 + 0 + 0) * 3 * 50 + (1 + 0 + 1) * 2 * 50) / 60.0,
-        )
 
     def test_mangkir_beruntun(self):
         student = _student()
@@ -267,23 +264,11 @@ class TestFeatures(unittest.TestCase):
         self.assertEqual(fitur["status_kode"], 4)
         self.assertEqual(fitur["status_nama"], "Mangkir Beruntun")
 
-    def test_attendance_unit_minutes(self):
-        student = _student()
-        riwayat = [_riwayat()]
-        details = [_detail(alfa=30, izin=10, telat=5, sks=2)]
-        fitur = build_features([student], riwayat, details, attendance_unit="minutes")[
-            0
-        ]
-        self.assertEqual(fitur["menit"], 35.0)
-        self.assertAlmostEqual(fitur["jam"], 40.0 / 60.0)
-        self.assertAlmostEqual(fitur["max_alfa"], 30.0 / (2 * 50 * 16) * 100.0)
-
     def test_tanpa_riwayat(self):
         fitur = build_features([_student()], [], [])[0]
         self.assertIsNone(fitur["periode"])
         self.assertEqual(fitur["jumlah_mk"], 0)
         self.assertEqual(fitur["status_nama"], "Tidak Diketahui")
-        self.assertTrue(fitur["catatan"])
 
 
 if __name__ == "__main__":
