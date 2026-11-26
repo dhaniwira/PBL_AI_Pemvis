@@ -71,8 +71,9 @@ def history_features(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def penalty_features(subjects: list[dict[str, Any]]) -> dict[str, Any]:
-    penalty = 0.0
-    count_d = 0
+    d_umum = 0
+    d_mpk = 0
+    d_mkku = 0
     count_e = 0
 
     for subject in subjects:
@@ -80,16 +81,22 @@ def penalty_features(subjects: list[dict[str, Any]]) -> dict[str, Any]:
             continue
 
         letter = grade(float(subject["nilai_akhir"]))
+        category = str(subject["kategori"]).upper()
+
         if letter == "E":
-            penalty += 3.0
             count_e += 1
         elif letter == "D":
-            count_d += 1
-            penalty += 1.0 if str(subject["kategori"]).upper() == "UMUM" else 3.0
+            if category == "UMUM":
+                d_umum += 1
+            elif category == "MPK":
+                d_mpk += 1
+            else:
+                d_mkku += 1
 
+    penalty = (1 * d_umum) + (3 * d_mpk) + (3 * d_mkku) + (3 * count_e)
     return {
-        "penalti": min(10.0, penalty),
-        "jumlah_d": count_d,
+        "penalti": min(10.0, float(penalty)),
+        "jumlah_d": d_umum + d_mpk + d_mkku,
         "jumlah_e": count_e,
     }
 

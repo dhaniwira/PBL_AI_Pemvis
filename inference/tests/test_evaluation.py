@@ -21,6 +21,7 @@ from inference.process_evaluation import (
     build_features,
     grade,
     infer,
+    penalty_features,
 )
 from inference.subsystem import fuzzify_value
 
@@ -204,6 +205,36 @@ class TestFeatures(unittest.TestCase):
         self.assertEqual(grade(65), "C")
         self.assertEqual(grade(55), "D")
         self.assertEqual(grade(45), "E")
+
+    def test_formula_penalti_dan_e(self):
+        self.assertEqual(
+            penalty_features([_detail(nilai_akhir=55, kategori="UMUM")])["penalti"],
+            1.0,
+        )
+        self.assertEqual(
+            penalty_features([_detail(nilai_akhir=55, kategori="MPK")])["penalti"],
+            3.0,
+        )
+        self.assertEqual(
+            penalty_features([_detail(nilai_akhir=55, kategori="MKKU")])["penalti"],
+            3.0,
+        )
+        self.assertEqual(
+            penalty_features([_detail(nilai_akhir=40, kategori="UMUM")])["penalti"],
+            3.0,
+        )
+
+    def test_penalti_dibatasi_sepuluh(self):
+        subjects = [
+            _detail(nilai_akhir=55, kategori="UMUM"),
+            _detail(nilai_akhir=55, kategori="MPK"),
+            _detail(nilai_akhir=55, kategori="MKKU"),
+            _detail(nilai_akhir=40, kategori="UMUM"),
+        ]
+        fitur = penalty_features(subjects)
+        self.assertEqual(fitur["penalti"], 10.0)
+        self.assertEqual(fitur["jumlah_d"], 3)
+        self.assertEqual(fitur["jumlah_e"], 1)
 
     def test_penalti_presensi_dan_status(self):
         student = _student(masa_studi=12)
